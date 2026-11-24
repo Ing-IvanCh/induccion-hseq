@@ -6,7 +6,7 @@ window.PS_CONFIG = {
   // URL de la "Aplicación web" de Google Apps Script (termina en /exec).
   // Mientras esté vacía, la plataforma funciona en MODO DEMOSTRACIÓN:
   // los registros se guardan solo en el navegador de quien la usa.
-  API_URL: "",
+  API_URL: "https://script.google.com/macros/s/AKfycbzIHe9ZGGdT-g-LxVHClAR42kDTP7sKWbJ3ekvZ-OYkjPlYrd8X3uyz6wbRFd4IcLYJrQ/exec",
 
   EMPRESA: "Process Solutions S.A.S.",
   NOTA_MINIMA: 80,            // porcentaje mínimo para aprobar
