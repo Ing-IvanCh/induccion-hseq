@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Panel HSEQ · Process Solutions</title>
+<link rel="icon" href="img/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/estilos.css">
+</head>
+<body class="admin">
+  <header class="barra">
+    <img src="img/logo.png" alt="Process Solutions" class="logo">
+    <div class="barra-txt"><b>Panel de administración</b><span>Inducción y reinducción HSEQ</span></div>
+    <a class="btn chico oscuro" href="index.html">Ir a la inducción</a>
+    <button class="btn chico oscuro" id="bSalir" hidden>Salir</button>
+  </header>
+  <div id="avisoDemo" class="aviso-demo" hidden>Modo demostración: se muestran los registros de este navegador. Clave: <b>demo</b>.</div>
+  <main id="panel" class="contenedor-admin"></main>
+  <div id="modal" class="modal" hidden>
+    <div class="modal-caja" role="dialog" aria-modal="true" aria-label="Certificado">
+      <div id="modalCuerpo"></div>
+      <nav class="nav">
+        <button class="btn" id="bCerrar">Cerrar</button>
+        <button class="btn primario" id="bImprimir">Descargar PDF</button>
+      </nav>
+    </div>
+  </div>
+  <script src="js/config.js"></script>
+  <script src="js/contenido.js"></script>
+  <script src="js/evaluacion.js"></script>
+  <script src="js/comun.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

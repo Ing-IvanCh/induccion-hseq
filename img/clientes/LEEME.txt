@@ -1,0 +1,4 @@
+Guarde aqui los logos de los clientes en PNG (fondo transparente o blanco).
+Nombres esperados: ecopetrol.png, cenit.png, odl.png, hocol.png, geopark.png,
+frontera.png, canacol.png, esenttia.png, yara.png, epm.png
+Si un archivo no existe, la plataforma muestra el nombre del cliente.
