@@ -45,6 +45,7 @@
     descarga: '<path d="M12 3v12M7 10l5 5 5-5M4 21h16"/>',
     copiar: '<rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/>',
     salir: '<path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10"/>',
+    basura: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
     refrescar: '<path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/>'
   };
   const icono = (n, cls = "ico") =>
@@ -117,6 +118,16 @@
     return llamar({ accion: "listar", clave });
   }
 
+  async function eliminarRegistros(clave, ids) {
+    if (modoDemo()) {
+      if (clave !== C.CLAVE_DEMO) return { ok: false, error: "Clave incorrecta" };
+      const todos = leerLS(DEMO_KEY), quedan = todos.filter((r) => !ids.includes(r.id));
+      escribirLS(DEMO_KEY, quedan);
+      return { ok: true, eliminados: todos.length - quedan.length };
+    }
+    return llamar({ accion: "eliminar", clave, ids });
+  }
+
   function codigoCertificado() {
     const a = new Date().getFullYear();
     const r = Math.random().toString(36).slice(2, 8).toUpperCase();
@@ -163,5 +174,5 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   }
 
-  window.PS = { icono, esc, fechaLarga, fechaCorta, guardarRegistro, reenviarPendientes, listarRegistros, codigoCertificado, certificadoHTML, aCSV, descargar, modoDemo };
+  window.PS = { icono, esc, fechaLarga, fechaCorta, guardarRegistro, reenviarPendientes, listarRegistros, eliminarRegistros, codigoCertificado, certificadoHTML, aCSV, descargar, modoDemo };
 })();

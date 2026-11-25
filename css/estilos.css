@@ -207,6 +207,23 @@ textarea{resize:vertical}
 .cert-sello b{font-size:22px;line-height:1}.cert-sello small{font-size:12px;font-weight:800}
 
 /* ---------- Panel de administración ---------- */
+.btn.peligro{border-color:light-dark(#D9A39B,#7A3A33);color:var(--mal)}
+.btn.peligro:hover{background:var(--malbg)}
+.btn.peligro-lleno{background:#B3261E;border-color:#B3261E;color:#fff}
+.btn.peligro-lleno:hover{background:#8C1D17}
+.btn.mini .ico{width:16px;height:16px}
+.col-sel{width:36px}
+.col-sel input{width:20px;height:20px;min-height:0;accent-color:var(--azul);cursor:pointer}
+.tabla tr.marcada{background:var(--acento-bg)}
+.barra-sel{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 12px;padding:10px 14px;border-radius:12px;background:var(--acento-bg);font-weight:800}
+.barra-sel span{flex:1}
+.confirmar{text-align:center;padding:8px 8px 20px}
+.confirmar .nav{justify-content:center;margin-top:8px}
+.conf-ico{display:inline-grid;place-items:center;width:56px;height:56px;border-radius:50%;background:var(--malbg);color:var(--mal);margin-bottom:6px}
+.conf-ico .ico{width:28px;height:28px}
+.confirmar .aviso{text-align:left}
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);opacity:0;background:#14387F;color:#fff;padding:12px 18px;border-radius:12px;font-weight:800;box-shadow:var(--sombra);transition:.25s;z-index:30;pointer-events:none}
+.toast.ver{opacity:1;transform:translate(-50%,0)}
 .contenedor-admin{flex:1;width:100%;max-width:1240px;margin:0 auto;padding:26px max(3vw,16px) 48px}
 .admin .aviso-demo{max-width:1240px;margin:16px auto 0;width:calc(100% - 2*max(3vw,16px))}
 .login{max-width:460px;margin:30px auto}
@@ -277,6 +294,7 @@ textarea{resize:vertical}
   .stack td{display:flow-root;border:0;padding:3px 0;padding-inline-start:7.5em;text-align:start}
   .stack td::before{content:attr(data-l);float:inline-start;width:7em;margin-inline-start:-7.5em;color:var(--ink2);font-weight:700}
   .stack td:empty{display:none}.tabla .der{text-align:start}
+  .stack td.col-sel{padding-inline-start:0}.stack td.col-sel::before{display:none}
 }
 
 /* ---------- Impresión: solo el certificado ---------- */

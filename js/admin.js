@@ -6,6 +6,7 @@
   const modal = document.getElementById("modal");
   const SES = "ps_admin_clave";
   let registros = [];
+  const sel = new Set(); // ids seleccionados para eliminar
   const filtro = { q: "", tipo: "", proceso: "", resultado: "", desde: "", hasta: "", todos: false };
 
   if (window.PS.modoDemo()) document.getElementById("avisoDemo").hidden = false;
@@ -113,6 +114,11 @@
             <button class="btn chico primario" id="bCSV">${icono("descarga")} Excel (CSV)</button>
           </div>
         </div>
+        <div class="barra-sel" id="barraSel" hidden>
+          <span id="selTxt"></span>
+          <button class="btn chico" id="bSelNada">Quitar selección</button>
+          <button class="btn chico peligro" id="bSelBorrar">${icono("basura")} Eliminar seleccionados</button>
+        </div>
         <div class="scroll"><table class="tabla stack" id="tabla"></table></div>
       </section>`;
     document.getElementById("ftipo").value = filtro.tipo;
@@ -127,6 +133,8 @@
     document.getElementById("bLimpiar").onclick = () => { Object.assign(filtro, { q: "", tipo: "", proceso: "", resultado: "", desde: "", hasta: "", todos: false }); vistaPanel(); };
     document.getElementById("bActualizar").onclick = () => entrar(claveSesion());
     document.getElementById("bCSV").onclick = exportar;
+    document.getElementById("bSelNada").onclick = () => { sel.clear(); pintar(); };
+    document.getElementById("bSelBorrar").onclick = () => pedirEliminar(filtrados().filter((r) => sel.has(r.id)));
     panel.querySelectorAll("[data-copiar]").forEach((b) => b.addEventListener("click", async () => {
       const t = document.getElementById(b.dataset.copiar).textContent;
       try { await navigator.clipboard.writeText(t); b.textContent = "¡Copiado!"; }
@@ -170,18 +178,73 @@
 
     const t = document.getElementById("tabla");
     if (!lista.length) { t.innerHTML = `<tbody><tr><td class="vacio">No hay registros${registros.length ? " con estos filtros" : " todavía. Envíe el enlace de inducción para empezar a recibirlos"}.</td></tr></tbody>`; return; }
-    t.innerHTML = `<thead><tr><th>Fecha</th><th>Nombre</th><th>Documento</th><th>Cargo</th><th>Proceso</th><th>Tipo</th><th class="der">Puntaje</th><th class="der">Intento</th><th>Resultado</th><th>Acciones</th></tr></thead>
-      <tbody>${lista.map((r, i) => `<tr>
+    const todosSel = lista.every((r) => sel.has(r.id));
+    t.innerHTML = `<thead><tr><th class="col-sel"><input type="checkbox" id="selTodos" aria-label="Seleccionar todos" ${todosSel ? "checked" : ""}></th><th>Fecha</th><th>Nombre</th><th>Documento</th><th>Cargo</th><th>Proceso</th><th>Tipo</th><th class="der">Puntaje</th><th class="der">Intento</th><th>Resultado</th><th>Acciones</th></tr></thead>
+      <tbody>${lista.map((r, i) => `<tr class="${sel.has(r.id) ? "marcada" : ""}">
+        <td class="col-sel"><input type="checkbox" data-sel="${i}" aria-label="Seleccionar ${esc(r.nombre)}" ${sel.has(r.id) ? "checked" : ""}></td>
         <td class="nw">${esc(fechaCorta(r.fecha))}</td><td><b>${esc(r.nombre)}</b></td><td>${esc(r.documento)}</td>
         <td>${esc(r.cargo)}</td><td>${esc(r.proceso)}</td><td>${esc(r.tipo)}</td>
         <td class="der">${esc(r.puntaje)}%</td><td class="der">${esc(r.intento)}</td>
         <td><span class="estado ${r.aprobado ? "si" : "no"}">${r.aprobado ? "Aprobado" : "No aprobado"}</span></td>
-        <td class="nw"><button class="btn mini" data-ver="${i}">Respuestas</button>${r.aprobado ? ` <button class="btn mini primario" data-cert="${i}">Certificado</button>` : ""}</td>
+        <td class="nw"><button class="btn mini" data-ver="${i}">Respuestas</button>${r.aprobado ? ` <button class="btn mini primario" data-cert="${i}">Certificado</button>` : ""} <button class="btn mini peligro" data-borrar="${i}" aria-label="Eliminar registro de ${esc(r.nombre)}">${icono("basura")}</button></td>
       </tr>`).join("")}</tbody>`;
     const titulos = [...t.querySelectorAll("thead th")].map((th) => th.textContent);
     t.querySelectorAll("tbody tr").forEach((tr) => [...tr.cells].forEach((td, k) => (td.dataset.l = titulos[k] || "")));
     t.querySelectorAll("[data-cert]").forEach((b) => (b.onclick = () => abrirModal(window.PS.certificadoHTML(lista[+b.dataset.cert]), true)));
     t.querySelectorAll("[data-ver]").forEach((b) => (b.onclick = () => abrirModal(respuestasHTML(lista[+b.dataset.ver]), false)));
+    t.querySelectorAll("[data-borrar]").forEach((b) => (b.onclick = () => pedirEliminar([lista[+b.dataset.borrar]])));
+    t.querySelectorAll("[data-sel]").forEach((c) => (c.onchange = () => { const r = lista[+c.dataset.sel]; c.checked ? sel.add(r.id) : sel.delete(r.id); pintar(); }));
+    document.getElementById("selTodos").onchange = (e) => { lista.forEach((r) => (e.target.checked ? sel.add(r.id) : sel.delete(r.id))); pintar(); };
+    barraSeleccion(lista);
+  }
+
+  function barraSeleccion(lista) {
+    const n = lista.filter((r) => sel.has(r.id)).length;
+    const b = document.getElementById("barraSel");
+    if (!b) return;
+    b.hidden = !n;
+    document.getElementById("selTxt").textContent = `${n} seleccionado${n === 1 ? "" : "s"}`;
+  }
+
+  /* ---------- Eliminar registros ---------- */
+  function pedirEliminar(filas) {
+    if (!filas.length) return;
+    // Sin «Mostrar todos los intentos», cada fila representa a la persona: se borran todos sus intentos de ese tipo
+    const claves = new Set(filas.map((r) => r.documento + "|" + r.tipo));
+    const objetivo = filtro.todos ? filas : registros.filter((r) => claves.has(r.documento + "|" + r.tipo));
+    const ids = [...new Set(objetivo.map((r) => r.id))];
+    const nombres = [...new Set(filas.map((r) => r.nombre))];
+    const extra = !filtro.todos && ids.length > filas.length ? `<p class="ayuda">Incluye todos los intentos de ${nombres.length === 1 ? "esta persona" : "estas personas"} (${ids.length} registros en total).</p>` : "";
+    abrirModal(`<div class="detalle confirmar">
+      <span class="conf-ico">${icono("basura")}</span>
+      <h2>¿Eliminar ${ids.length === 1 ? "este registro" : `${ids.length} registros`}?</h2>
+      <p>${nombres.slice(0, 6).map(esc).join(", ")}${nombres.length > 6 ? ` y ${nombres.length - 6} más` : ""}</p>${extra}
+      <p class="aviso">Se borrarán de la hoja de Google y no se pueden recuperar desde el panel. Si los necesita como evidencia, descargue antes el Excel (CSV).</p>
+      <p class="error" id="errBorrar" role="alert"></p>
+      <div class="nav sin-borde"><button class="btn" id="bNoBorrar">Cancelar</button><button class="btn peligro-lleno" id="bSiBorrar">${icono("basura")} Sí, eliminar</button></div>
+    </div>`, false, true);
+    document.getElementById("bNoBorrar").onclick = cerrarModal;
+    document.getElementById("bSiBorrar").onclick = async (e) => {
+      const b = e.currentTarget; b.disabled = true; b.textContent = "Eliminando…";
+      try {
+        const r = await window.PS.eliminarRegistros(claveSesion(), ids);
+        if (!r.ok) throw new Error(r.error || "No se pudo eliminar");
+        ids.forEach((id) => sel.delete(id));
+        registros = registros.filter((x) => !ids.includes(x.id));
+        cerrarModal(); pintar();
+        aviso(`${r.eliminados} registro${r.eliminados === 1 ? "" : "s"} eliminado${r.eliminados === 1 ? "" : "s"}.`);
+      } catch (err) {
+        document.getElementById("errBorrar").textContent = err.message;
+        b.disabled = false; b.innerHTML = `${icono("basura")} Sí, eliminar`;
+      }
+    };
+  }
+
+  function aviso(txt) {
+    let a = document.getElementById("toast");
+    if (!a) { a = document.createElement("div"); a.id = "toast"; a.className = "toast"; a.setAttribute("role", "status"); document.body.appendChild(a); }
+    a.textContent = txt; a.classList.add("ver");
+    clearTimeout(a._t); a._t = setTimeout(() => a.classList.remove("ver"), 3000);
   }
 
   function respuestasHTML(r) {
@@ -194,12 +257,13 @@
       }).join("")}</ol></div>`;
   }
 
-  function abrirModal(html, imprimible) {
+  function abrirModal(html, imprimible, sinPie) {
     document.getElementById("modalCuerpo").innerHTML = html;
     document.getElementById("bImprimir").hidden = !imprimible;
+    document.querySelector(".modal-caja > .nav").hidden = !!sinPie;
     document.body.classList.toggle("imprime-modal", imprimible);
     modal.hidden = false;
-    document.getElementById("bCerrar").focus();
+    (document.getElementById(sinPie ? "bNoBorrar" : "bCerrar") || document.getElementById("bCerrar")).focus();
   }
   const cerrarModal = () => { modal.hidden = true; document.body.classList.remove("imprime-modal"); };
   document.getElementById("bCerrar").onclick = cerrarModal;

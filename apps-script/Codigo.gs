@@ -12,7 +12,12 @@
  */
 
 // Cambie esta clave. Es la que se escribe en el panel de administración.
+// Mientras siga siendo 'CambieEstaClave2026', el panel NO mostrará datos.
 const CLAVE_ADMIN = 'CambieEstaClave2026';
+
+// Solo si el script NO se creó desde la hoja (Extensiones → Apps Script):
+// pegue aquí el ID de la hoja (el texto entre /d/ y /edit en su dirección).
+const ID_HOJA = '';
 
 const HOJA = 'Registros';
 const BASE = [
@@ -28,8 +33,16 @@ function doPost(e) {
     const body = JSON.parse(e.postData.contents);
     if (body.accion === 'registrar') return json(registrar(body.registro));
     if (body.accion === 'listar') {
-      if (String(body.clave) !== claveAdmin()) return json({ ok: false, error: 'Clave incorrecta' });
+      const clave = claveAdmin();
+      if (!clave || clave === 'CambieEstaClave2026') return json({ ok: false, error: 'Falta configurar la clave del panel en Apps Script' });
+      if (String(body.clave) !== clave) return json({ ok: false, error: 'Clave incorrecta' });
       return json({ ok: true, registros: listar() });
+    }
+    if (body.accion === 'eliminar') {
+      const clave = claveAdmin();
+      if (!clave || clave === 'CambieEstaClave2026') return json({ ok: false, error: 'Falta configurar la clave del panel en Apps Script' });
+      if (String(body.clave) !== clave) return json({ ok: false, error: 'Clave incorrecta' });
+      return json(eliminar(body.ids));
     }
     return json({ ok: false, error: 'Acción no válida' });
   } catch (err) {
@@ -47,7 +60,7 @@ function claveAdmin() {
 }
 
 function hoja() {
-  const libro = SpreadsheetApp.getActiveSpreadsheet();
+  const libro = ID_HOJA ? SpreadsheetApp.openById(ID_HOJA) : SpreadsheetApp.getActiveSpreadsheet();
   let h = libro.getSheetByName(HOJA);
   if (!h) {
     h = libro.insertSheet(HOJA);
@@ -121,6 +134,28 @@ function listar() {
     });
     return r;
   });
+}
+
+function eliminar(ids) {
+  if (!Array.isArray(ids) || !ids.length) return { ok: false, error: 'No hay registros para eliminar' };
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const h = hoja();
+    if (h.getLastRow() < 2) return { ok: true, eliminados: 0 };
+    const enc = h.getRange(1, 1, 1, h.getLastColumn()).getValues()[0];
+    const iId = enc.indexOf('Código certificado');
+    const valores = h.getRange(2, iId + 1, h.getLastRow() - 1, 1).getValues();
+    const buscar = ids.map(String);
+    let eliminados = 0;
+    // De abajo hacia arriba para no correr las filas
+    for (let i = valores.length - 1; i >= 0; i--) {
+      if (buscar.indexOf(String(valores[i][0])) !== -1) { h.deleteRow(i + 2); eliminados++; }
+    }
+    return { ok: true, eliminados: eliminados };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function json(obj) {
