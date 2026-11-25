@@ -1,6 +1,8 @@
 /* Panel de administración: ingreso con clave, indicadores, filtros, exportación y certificados */
 {
-  const C = window.PS_CONFIG, Q = window.PS_EVALUACION;
+  const C = window.PS_CONFIG;
+  let Q = (window.PS_EVALUACION || []).map(window.PS.normalizarPregunta); // banco actual (para textos)
+  let pestana = "resultados";
   const { icono, esc, fechaCorta } = window.PS;
   const panel = document.getElementById("panel");
   const modal = document.getElementById("modal");
@@ -12,6 +14,8 @@
   if (window.PS.modoDemo()) document.getElementById("avisoDemo").hidden = false;
 
   const claveSesion = () => { try { return sessionStorage.getItem(SES) || ""; } catch (e) { return ""; } };
+  const editor = window.PS_EDITOR;
+  editor.usar({ clave: () => claveSesion(), aviso: (t) => aviso(t), alGuardar: (b) => { Q = b; } });
   const guardarClave = (c) => { try { c ? sessionStorage.setItem(SES, c) : sessionStorage.removeItem(SES); } catch (e) {} };
 
   /* ---------- Ingreso ---------- */
@@ -36,9 +40,10 @@
   async function entrar(clave) {
     panel.innerHTML = `<p class="cargando">Cargando registros…</p>`;
     try {
-      const r = await window.PS.listarRegistros(clave);
+      const [r, b] = await Promise.all([window.PS.listarRegistros(clave), window.PS.preguntasAdmin(clave).catch(() => null)]);
       if (!r.ok) { guardarClave(""); return vistaIngreso(r.error || "Clave incorrecta."); }
       guardarClave(clave);
+      if (b && b.ok) { Q = b.preguntas; editor.cargar(b); }
       registros = (r.registros || []).map(normalizar).sort((a, b) => b.fecha.localeCompare(a.fecha));
       vistaPanel();
     } catch (e) {
@@ -79,15 +84,16 @@
   /* ---------- Panel ---------- */
   function vistaPanel() {
     document.getElementById("bSalir").hidden = false;
+    if (pestana === "evaluacion") {
+      panel.innerHTML = cabecera() + `<div id="zonaEditor"></div>`;
+      enlazarPestanas();
+      editor.pintar(document.getElementById("zonaEditor"));
+      return;
+    }
     const base = location.href.split(/[?#]/)[0].replace(/admin\.html$/, "");
     const enlaceInd = base, enlaceRe = base + "?tipo=reinduccion";
     const procesos = [...new Set([...C.PROCESOS, ...registros.map((r) => r.proceso).filter(Boolean)])];
-    panel.innerHTML = `
-      <section class="titulo-panel">
-        <div><h1>Resultados de la inducción HSEQ</h1>
-        <p class="ayuda">Estadísticas por participante (se toma su mejor intento, salvo que marque «Mostrar todos los intentos»). Los filtros aplican a todo.</p></div>
-        <button class="btn" id="bActualizar">${icono("refrescar")} Actualizar</button>
-      </section>
+    panel.innerHTML = cabecera() + `
       <section class="enlaces">
         ${[["Enlace de inducción", enlaceInd], ["Enlace de reinducción", enlaceRe]].map(([t, u], i) => `
           <div class="enlace"><b>${t}</b><code id="enl${i}">${esc(u)}</code>
@@ -121,6 +127,7 @@
         </div>
         <div class="scroll"><table class="tabla stack" id="tabla"></table></div>
       </section>`;
+    enlazarPestanas();
     document.getElementById("ftipo").value = filtro.tipo;
     document.getElementById("fproc").value = filtro.proceso;
     document.getElementById("fres").value = filtro.resultado;
@@ -131,7 +138,6 @@
     enlazar("fres", "resultado", "change"); enlazar("fdesde", "desde", "change"); enlazar("fhasta", "hasta", "change");
     enlazar("ftodos", "todos", "change", "checked");
     document.getElementById("bLimpiar").onclick = () => { Object.assign(filtro, { q: "", tipo: "", proceso: "", resultado: "", desde: "", hasta: "", todos: false }); vistaPanel(); };
-    document.getElementById("bActualizar").onclick = () => entrar(claveSesion());
     document.getElementById("bCSV").onclick = exportar;
     document.getElementById("bSelNada").onclick = () => { sel.clear(); pintar(); };
     document.getElementById("bSelBorrar").onclick = () => pedirEliminar(filtrados().filter((r) => sel.has(r.id)));
@@ -142,6 +148,29 @@
       setTimeout(() => (b.innerHTML = `${icono("copiar")} Copiar`), 1800);
     }));
     pintar();
+  }
+
+  function cabecera() {
+    const res = pestana === "resultados";
+    return `<section class="titulo-panel">
+        <div><h1>${res ? "Resultados de la inducción HSEQ" : "Preguntas de la evaluación"}</h1>
+        <p class="ayuda">${res ? "Estadísticas por participante (se toma su mejor intento, salvo que marque «Mostrar todos los intentos»). Los filtros aplican a todo." : "Lo que guarde aquí es lo que verán los trabajadores en su próxima evaluación. Los registros anteriores no cambian."}</p></div>
+        ${res ? `<button class="btn" id="bActualizar">${icono("refrescar")} Actualizar</button>` : ""}
+      </section>
+      <nav class="pestanas" role="tablist">
+        <button role="tab" data-pest="resultados" aria-selected="${res}">${icono("grupo")} Resultados</button>
+        <button role="tab" data-pest="evaluacion" aria-selected="${!res}">${icono("documento")} Evaluación</button>
+      </nav>`;
+  }
+
+  function enlazarPestanas() {
+    panel.querySelectorAll("[data-pest]").forEach((b) => (b.onclick = () => {
+      if (b.dataset.pest === pestana) return;
+      if (pestana === "evaluacion" && editor.sucio() && !editor.confirmarSalida()) return;
+      pestana = b.dataset.pest; vistaPanel();
+    }));
+    const ba = document.getElementById("bActualizar");
+    if (ba) ba.onclick = () => entrar(claveSesion());
   }
 
   function pintar() {
@@ -248,11 +277,13 @@
   }
 
   function respuestasHTML(r) {
-    const fall = String(r.fallidas || "").split(",").map((s) => s.trim());
+    const fall = String(r.fallidas || "").split(",").map((x) => x.trim());
+    const ids = Object.keys(r.respuestas || {});
+    const orden = [...Q.filter((q) => ids.includes(q.id)), ...ids.filter((id) => !Q.some((q) => q.id === id)).map((id) => ({ id, texto: `Pregunta ${id} (ya no está en el banco)`, califica: false }))];
     return `<div class="detalle"><h2>${esc(r.nombre)}</h2>
       <p class="ayuda">${esc(r.tipo)} · ${esc(fechaCorta(r.fecha))} · ${esc(r.puntaje)}% · intento ${esc(r.intento)} · código ${esc(r.id)}${r.duracionMin ? ` · ${esc(r.duracionMin)} min` : ""}</p>
-      <ol>${Q.map((q) => {
-        const marca = q.tipo === "abierta" ? "" : fall.includes(q.id) ? `<span class="estado no">Incorrecta</span>` : `<span class="estado si">Correcta</span>`;
+      <ol>${orden.map((q) => {
+        const marca = fall.includes(q.id) ? `<span class="estado no">Incorrecta</span>` : q.califica ? `<span class="estado si">Correcta</span>` : "";
         return `<li><b>${esc(q.texto)}</b> ${marca}<p>${esc(r.respuestas[q.id] || "—")}</p></li>`;
       }).join("")}</ol></div>`;
   }
@@ -270,7 +301,11 @@
   modal.addEventListener("click", (e) => { if (e.target === modal) cerrarModal(); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !modal.hidden) cerrarModal(); });
   document.getElementById("bImprimir").onclick = () => { try { window.print(); } catch (e) {} };
-  document.getElementById("bSalir").onclick = () => { guardarClave(""); registros = []; vistaIngreso(); };
+  document.getElementById("bSalir").onclick = () => {
+    if (editor.sucio() && !editor.confirmarSalida()) return;
+    guardarClave(""); registros = []; pestana = "resultados"; vistaIngreso();
+  };
+  window.addEventListener("beforeunload", (e) => { if (editor.sucio()) { e.preventDefault(); e.returnValue = ""; } });
 
   function exportar() {
     const cols = [

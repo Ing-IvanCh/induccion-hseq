@@ -80,13 +80,26 @@ La pantalla «Nuestros clientes» muestra el nombre y el sector de cada cliente.
 
 La página los detecta sola: cuando un logo no existe, sigue mostrando el nombre. Para agregar o quitar clientes, edite `PS_DATOS.clientes` al final de `js/contenido.js`.
 
+## Editar las preguntas sin tocar código
+
+En el panel de administrador, pestaña **Evaluación**:
+
+- **Agregar, editar, ordenar (↑ ↓), duplicar, desactivar o eliminar** preguntas.
+- **Tipos:** única respuesta, varias respuestas, verdadero/falso y abierta.
+- **Peso:** cuánto vale cada pregunta en la nota. La nota es ponderada: suma de pesos acertados ÷ suma de pesos que cuentan.
+- **Abiertas que cuentan:** se califican con **palabras clave** (sin importar tildes ni mayúsculas) y un mínimo de coincidencias. Sin palabras clave, la abierta se guarda pero no cuenta.
+- **Nota mínima** y **orden aleatorio** de las preguntas. Las opciones también se mezclan, excepto las de tipo «Todas las anteriores» o «a y b son correctas».
+- Al guardar, todo queda en la pestaña **Preguntas** de su hoja de Google, que también se puede editar ahí directamente.
+
+Los registros anteriores no cambian cuando se editan las preguntas.
+
 ## Cambiar contenido después
 
 | Quiero cambiar… | Archivo |
 |---|---|
 | Textos de las pantallas, agregar o quitar temas | `js/contenido.js` |
 | Clientes, acreditaciones, mapa de procesos, PHVA, residuos | `PS_DATOS`, al final de `js/contenido.js` |
-| Preguntas, opciones o respuesta correcta | `js/evaluacion.js` |
+| Preguntas, opciones, respuesta correcta, pesos, nota mínima | Panel de administrador → pestaña **Evaluación** (`js/evaluacion.js` solo trae las preguntas iniciales) |
 | Nota mínima, nombre de quien firma, lista de procesos | `js/config.js` |
 | Clave del panel | `apps-script/Codigo.gs` (o la propiedad `CLAVE_ADMIN` del script) |
 | Colores (azul marino #14387F, azul medio #0072B1, cian #00A8E0) | primeras líneas de `css/estilos.css` |

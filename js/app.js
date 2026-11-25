@@ -1,6 +1,12 @@
 /* Flujo del trabajador: registro → pantallas → evaluación → resultado y certificado */
 {
-  const C = window.PS_CONFIG, S = window.PS_CONTENIDO, Q = window.PS_EVALUACION;
+  const C = window.PS_CONFIG, S = window.PS_CONTENIDO;
+  // Banco de preguntas: se carga desde Google Sheets mientras la persona lee el contenido
+  let Q = [], AJ = { notaMinima: C.NOTA_MINIMA, mezclarPreguntas: true };
+  const carga = window.PS.cargarPreguntas().then((r) => {
+    Q = r.preguntas; AJ = r.ajustes;
+    document.querySelectorAll("[data-nota]").forEach((el) => (el.textContent = AJ.notaMinima));
+  });
   const { icono, esc, fechaLarga } = window.PS;
   const app = document.getElementById("app");
   const GUARDA = "ps_induccion_progreso";
@@ -19,7 +25,8 @@
   function guardar() { try { localStorage.setItem(GUARDA, JSON.stringify(estado)); } catch (e) {} }
   function limpiar() { try { localStorage.removeItem(GUARDA); } catch (e) {} }
 
-  const graded = Q.filter((q) => q.tipo !== "abierta");
+  const calificables = () => Q.filter((q) => q.califica);
+  const mezclar = (arr) => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
   const totalPasos = S.length + 2; // pantallas + registro + evaluación
 
   function progreso(n, etiqueta) {
@@ -43,7 +50,7 @@
           <div><span class="pill">Registro · ${TIPO}</span>
           <h1>${TIPO} en Seguridad, Salud en el Trabajo, Calidad y Ambiente</h1>
           <p>Bienvenido(a) a Process Solutions. Conozca cómo cuidamos su vida y su salud en el trabajo.</p>
-          <div class="chips"><span>${S.length} pantallas cortas</span><span>20 a 30 min</span><span>Evaluación final · aprueba con ${C.NOTA_MINIMA}%</span></div></div>
+          <div class="chips"><span>${S.length} pantallas cortas</span><span>20 a 30 min</span><span>Evaluación final · aprueba con <b data-nota>${AJ.notaMinima}</b>%</span></div></div>
           <span class="cab-ico">${icono("escudo")}</span>
         </div>
         <form id="fReg" class="cuerpo form" novalidate>
@@ -180,30 +187,42 @@
   }
 
   /* ---------- 3. Evaluación ---------- */
-  function vistaEvaluacion() {
+  async function vistaEvaluacion() {
     progreso(totalPasos - 1, "Evaluación");
+    if (!Q.length) { mostrar(`<section class="tarjeta"><div class="cuerpo"><p class="cargando">Cargando la evaluación…</p></div></section>`); await carga; }
     const R = estado.respuestas;
+    // Orden aleatorio por intento; se guarda para que recargar la página no lo cambie
+    const ids = Q.map((q) => q.id);
+    if (!estado.orden || estado.orden.length !== ids.length || estado.orden.some((id) => !ids.includes(id))) {
+      estado.orden = AJ.mezclarPreguntas ? mezclar(ids) : ids;
+      estado.ordenOps = {};
+      Q.forEach((q) => { const idx = q.opciones.map((_, k) => k); estado.ordenOps[q.id] = q.mezclar && q.tipo !== "vf" ? mezclar(idx) : idx; });
+      guardar();
+    }
+    const lista = estado.orden.map((id) => Q.find((q) => q.id === id));
+    const nCal = calificables().length;
     let n = 0;
-    const html = Q.map((q) => {
+    const html = lista.map((q) => {
       n++;
       let campo;
       if (q.tipo === "abierta") {
         campo = `<textarea name="${q.id}" rows="3" maxlength="1500" placeholder="Escriba su respuesta…">${esc(R[q.id] || "")}</textarea>`;
       } else {
         const multi = q.tipo === "multiple";
-        campo = `<div class="ops">${q.opciones.map((o, k) => {
+        campo = `<div class="ops">${(estado.ordenOps[q.id] || q.opciones.map((_, k) => k)).map((k) => {
+          const o = q.opciones[k];
           const marcado = multi ? (R[q.id] || []).includes(k) : R[q.id] === k;
           return `<label class="op"><input type="${multi ? "checkbox" : "radio"}" name="${q.id}" value="${k}" ${marcado ? "checked" : ""}><span>${esc(o)}</span></label>`;
         }).join("")}</div>`;
       }
-      const req = q.tipo !== "abierta" || q.obligatoria;
+      const req = q.obligatoria;
       return `<fieldset class="preg" id="f_${q.id}"><legend><span class="num">${n}</span>${esc(q.texto)}${req ? " *" : ""}</legend>${campo}</fieldset>`;
     }).join("");
     mostrar(`
       <section class="tarjeta entra">
         <div class="cab">
           <div><span class="pill">Evaluación · ${TIPO}</span><h1>Evaluación de ${TIPO.toLowerCase()}</h1>
-          <p>${graded.length} preguntas calificables y ${Q.length - graded.length} de reflexión. Necesita ${C.NOTA_MINIMA}% para aprobar.</p></div>
+          <p>${Q.length} preguntas${nCal < Q.length ? `, ${nCal} cuentan para la nota` : ""}. Necesita ${AJ.notaMinima}% para aprobar.</p></div>
           <span class="cab-ico">${icono("documento")}</span>
         </div>
         <form id="fEval" class="cuerpo" novalidate>${html}
@@ -225,9 +244,10 @@
         else { const x = form.querySelector(`input[name="${q.id}"]:checked`); R[q.id] = x ? +x.value : undefined; }
       }
     };
-    const faltantes = () => Q.filter((q) => {
+    const faltantes = () => lista.filter((q) => {
       const v = R[q.id];
-      if (q.tipo === "abierta") return q.obligatoria && !(v || "").trim();
+      if (!q.obligatoria) return false;
+      if (q.tipo === "abierta") return !(v || "").trim();
       if (q.tipo === "multiple") return !(v && v.length);
       return v === undefined;
     });
@@ -252,16 +272,13 @@
   async function calificar() {
     const R = estado.respuestas;
     const fallidas = [];
-    let buenas = 0;
-    for (const q of graded) {
-      const v = R[q.id];
-      const ok = q.tipo === "multiple"
-        ? JSON.stringify([...(v || [])].sort()) === JSON.stringify([...q.correcta].sort())
-        : v === q.correcta;
-      if (ok) buenas++; else fallidas.push(q.id);
+    let buenas = 0, pesoBueno = 0, pesoTotal = 0;
+    for (const q of calificables()) {
+      pesoTotal += q.peso;
+      if (window.PS.esCorrecta(q, R[q.id])) { buenas++; pesoBueno += q.peso; } else fallidas.push(q.id);
     }
-    const puntaje = Math.round((buenas / graded.length) * 100);
-    const aprobado = puntaje >= C.NOTA_MINIMA;
+    const puntaje = pesoTotal ? Math.round((pesoBueno / pesoTotal) * 100) : 100;
+    const aprobado = puntaje >= AJ.notaMinima;
     const texto = (q) => {
       const v = R[q.id];
       if (q.tipo === "abierta") return (v || "").trim();
@@ -274,7 +291,7 @@
     const reg = {
       id: window.PS.codigoCertificado(), fecha: new Date().toISOString(), tipo: TIPO,
       nombre: d.nombre, documento: d.documento, cargo: d.cargo, proceso: d.proceso, empresa: d.empresa || C.EMPRESA,
-      puntaje, correctas: buenas, total: graded.length, aprobado,
+      puntaje, correctas: buenas, total: calificables().length, aprobado,
       duracionMin: estado.inicio ? Math.max(1, Math.round((Date.now() - new Date(estado.inicio)) / 60000)) : "",
       fallidas: fallidas.join(", "), respuestas
     };
@@ -307,10 +324,10 @@
       document.getElementById("bPdf").onclick = () => { try { window.print(); } catch (e) {} };
       document.getElementById("bNueva").onclick = () => { limpiar(); estado = { vista: "registro", paso: 0, datos: {}, respuestas: {}, inicio: null }; render(); };
     } else {
-      const lista = fallidas.map((id) => { const q = Q.find((x) => x.id === id); return `<li>${esc(q.texto)}</li>`; }).join("");
+      const lista = fallidas.map((id) => { const q = Q.find((x) => x.id === id); return q ? `<li>${esc(q.texto)}</li>` : ""; }).join("");
       mostrar(`
         <section class="tarjeta entra">
-          <div class="cab mal"><div><span class="pill">Resultado</span><h1>Aún no alcanza el ${C.NOTA_MINIMA}%</h1>
+          <div class="cab mal"><div><span class="pill">Resultado</span><h1>Aún no alcanza el ${AJ.notaMinima}%</h1>
             <p>Obtuvo ${reg.puntaje}% (${reg.correctas} de ${reg.total} correctas). Su intento quedó registrado. Repase el contenido y vuelva a intentarlo.</p></div>
             <span class="cab-ico">${icono("refrescar")}</span></div>
           <div class="cuerpo">${aviso}<h2 class="sub">Preguntas para repasar</h2><ul class="repaso">${lista}</ul></div>
@@ -319,7 +336,7 @@
             <button class="btn primario" id="bReintentar">Intentar de nuevo ${icono("refrescar")}</button>
           </nav>
         </section>`);
-      const reiniciar = (vista) => { estado.respuestas = {}; estado.resultado = null; estado.vista = vista; estado.paso = 0; guardar(); render(); };
+      const reiniciar = (vista) => { estado.respuestas = {}; estado.resultado = null; estado.orden = null; estado.ordenOps = null; estado.vista = vista; estado.paso = 0; guardar(); render(); };
       document.getElementById("bRepasar").onclick = () => reiniciar("pantalla");
       document.getElementById("bReintentar").onclick = () => reiniciar("evaluacion");
     }

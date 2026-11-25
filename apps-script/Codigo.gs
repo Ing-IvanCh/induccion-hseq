@@ -32,18 +32,16 @@ function doPost(e) {
   try {
     const body = JSON.parse(e.postData.contents);
     if (body.accion === 'registrar') return json(registrar(body.registro));
-    if (body.accion === 'listar') {
-      const clave = claveAdmin();
-      if (!clave || clave === 'CambieEstaClave2026') return json({ ok: false, error: 'Falta configurar la clave del panel en Apps Script' });
-      if (String(body.clave) !== clave) return json({ ok: false, error: 'Clave incorrecta' });
-      return json({ ok: true, registros: listar() });
-    }
-    if (body.accion === 'eliminar') {
-      const clave = claveAdmin();
-      if (!clave || clave === 'CambieEstaClave2026') return json({ ok: false, error: 'Falta configurar la clave del panel en Apps Script' });
-      if (String(body.clave) !== clave) return json({ ok: false, error: 'Clave incorrecta' });
-      return json(eliminar(body.ids));
-    }
+    if (body.accion === 'preguntas') return json(leerPreguntas(false));
+
+    // Acciones del panel: requieren la clave de administrador
+    const clave = claveAdmin();
+    if (!clave || clave === 'CambieEstaClave2026') return json({ ok: false, error: 'Falta configurar la clave del panel en Apps Script' });
+    if (String(body.clave) !== clave) return json({ ok: false, error: 'Clave incorrecta' });
+    if (body.accion === 'listar') return json({ ok: true, registros: listar() });
+    if (body.accion === 'eliminar') return json(eliminar(body.ids));
+    if (body.accion === 'preguntasAdmin') return json(leerPreguntas(true));
+    if (body.accion === 'guardarPreguntas') return json(guardarPreguntas(body.preguntas, body.ajustes));
     return json({ ok: false, error: 'Acción no válida' });
   } catch (err) {
     return json({ ok: false, error: String(err) });
@@ -153,6 +151,76 @@ function eliminar(ids) {
       if (buscar.indexOf(String(valores[i][0])) !== -1) { h.deleteRow(i + 2); eliminados++; }
     }
     return { ok: true, eliminados: eliminados };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/* ---------- Banco de preguntas (pestaña "Preguntas") ---------- */
+const HOJA_PREG = 'Preguntas';
+const COL_PREG = ['Orden', 'ID', 'Activa', 'Tipo', 'Pregunta', 'Opciones (una por línea)', 'Correcta(s) (número de opción)',
+  'Peso', 'Cuenta en la nota', 'Obligatoria', 'Mezclar opciones', 'Palabras clave (abiertas)', 'Mínimo de palabras clave'];
+const TIPOS = { unica: 'Única', multiple: 'Múltiple', vf: 'Verdadero/Falso', abierta: 'Abierta' };
+const siNo = v => (v ? 'Sí' : 'No');
+const esSi = v => v === true || String(v).trim().toLowerCase() === 'sí' || String(v).trim().toLowerCase() === 'si' || String(v).toUpperCase() === 'TRUE';
+
+function ajustes() {
+  const p = PropertiesService.getScriptProperties();
+  return {
+    notaMinima: Number(p.getProperty('NOTA_MINIMA')) || 80,
+    mezclarPreguntas: p.getProperty('MEZCLAR_PREGUNTAS') !== 'No'
+  };
+}
+
+function leerPreguntas(todas) {
+  const libro = ID_HOJA ? SpreadsheetApp.openById(ID_HOJA) : SpreadsheetApp.getActiveSpreadsheet();
+  const h = libro.getSheetByName(HOJA_PREG);
+  // Sin pestaña todavía: la página usa las preguntas que trae incluidas
+  if (!h || h.getLastRow() < 2) return { ok: true, preguntas: null, ajustes: ajustes() };
+  const filas = h.getRange(2, 1, h.getLastRow() - 1, COL_PREG.length).getValues();
+  const tipoDe = t => Object.keys(TIPOS).find(k => TIPOS[k] === t || k === t) || 'unica';
+  const lista = filas.filter(f => String(f[4]).trim()).map(f => {
+    const tipo = tipoDe(String(f[3]).trim());
+    const opciones = tipo === 'vf' ? ['Verdadero', 'Falso'] : tipo === 'abierta' ? [] : String(f[5]).split('\n').map(x => x.trim()).filter(Boolean);
+    const nums = String(f[6]).split(/[,;\s]+/).map(Number).filter(n => n > 0).map(n => n - 1);
+    return {
+      id: String(f[1]).trim(), activa: esSi(f[2]), tipo: tipo, texto: String(f[4]).trim(), opciones: opciones,
+      correcta: tipo === 'multiple' ? nums : (tipo === 'abierta' ? null : (nums.length ? nums[0] : 0)),
+      peso: Number(f[7]) || 1, califica: esSi(f[8]), obligatoria: esSi(f[9]), mezclar: esSi(f[10]),
+      claves: String(f[11]).split(',').map(x => x.trim()).filter(Boolean), minClaves: Number(f[12]) || 1
+    };
+  });
+  return { ok: true, preguntas: todas ? lista : lista.filter(q => q.activa), ajustes: ajustes() };
+}
+
+function guardarPreguntas(preguntas, aj) {
+  if (!Array.isArray(preguntas)) return { ok: false, error: 'No llegaron preguntas' };
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const libro = ID_HOJA ? SpreadsheetApp.openById(ID_HOJA) : SpreadsheetApp.getActiveSpreadsheet();
+    let h = libro.getSheetByName(HOJA_PREG);
+    if (!h) h = libro.insertSheet(HOJA_PREG);
+    h.clearContents();
+    const filas = preguntas.map((q, i) => [
+      i + 1, q.id, siNo(q.activa !== false), TIPOS[q.tipo] || 'Única', q.texto,
+      q.tipo === 'unica' || q.tipo === 'multiple' ? (q.opciones || []).join('\n') : '',
+      q.tipo === 'abierta' ? '' : [].concat(q.correcta).map(n => Number(n) + 1).join(', '),
+      Number(q.peso) || 1, siNo(q.califica !== false), siNo(q.obligatoria !== false), siNo(q.mezclar !== false),
+      (q.claves || []).join(', '), Number(q.minClaves) || 1
+    ]);
+    h.getRange(1, 1, 1, COL_PREG.length).setValues([COL_PREG]).setFontWeight('bold').setBackground('#14387F').setFontColor('#FFFFFF');
+    h.setFrozenRows(1);
+    if (filas.length) {
+      h.getRange(2, 7, filas.length, 1).setNumberFormat('@'); // "1, 3" como texto
+      h.getRange(2, 1, filas.length, COL_PREG.length).setValues(filas).setWrap(true).setVerticalAlignment('top');
+    }
+    if (aj) {
+      const p = PropertiesService.getScriptProperties();
+      if (aj.notaMinima) p.setProperty('NOTA_MINIMA', String(Math.min(100, Math.max(1, Number(aj.notaMinima)))));
+      p.setProperty('MEZCLAR_PREGUNTAS', aj.mezclarPreguntas === false ? 'No' : 'Sí');
+    }
+    return { ok: true, guardadas: filas.length, ajustes: ajustes() };
   } finally {
     lock.releaseLock();
   }

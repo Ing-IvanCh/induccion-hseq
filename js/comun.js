@@ -128,6 +128,87 @@
     return llamar({ accion: "eliminar", clave, ids });
   }
 
+  /* ---------- Banco de preguntas ---------- */
+  const PREG_KEY = "ps_induccion_preguntas_cache";
+  const PREG_DEMO = "ps_induccion_demo_preguntas";
+  const AJ_DEMO = "ps_induccion_demo_ajustes";
+  const ajustesBase = () => ({ notaMinima: C.NOTA_MINIMA, mezclarPreguntas: true });
+
+  // Completa los campos que las preguntas antiguas (evaluacion.js) no traen
+  function normalizarPregunta(q) {
+    const tipo = q.tipo || "unica";
+    const opciones = tipo === "vf" ? ["Verdadero", "Falso"] : tipo === "abierta" ? [] : (q.opciones || []);
+    const refiere = opciones.some((o) => /anteriores|son correctas|\b[a-f] y [a-f]\b/i.test(o));
+    return {
+      id: String(q.id), tipo, texto: q.texto || "", opciones,
+      correcta: tipo === "multiple" ? [].concat(q.correcta ?? []) : tipo === "abierta" ? null : (q.correcta ?? 0),
+      peso: Number(q.peso) || 1,
+      // Por defecto: las abiertas sin palabras clave no cuentan
+      califica: q.califica !== undefined ? !!q.califica : (tipo !== "abierta" || !!(q.claves && q.claves.length)),
+      obligatoria: q.obligatoria !== undefined ? !!q.obligatoria : true,
+      mezclar: q.mezclar !== undefined ? !!q.mezclar && !refiere : !refiere,
+      claves: q.claves || [], minClaves: Number(q.minClaves) || 1,
+      activa: q.activa !== false
+    };
+  }
+  const preguntasBase = () => (window.PS_EVALUACION || []).map(normalizarPregunta);
+
+  // Para el trabajador: preguntas activas y ajustes
+  async function cargarPreguntas() {
+    if (modoDemo()) {
+      const dem = leerLS(PREG_DEMO);
+      let aj; try { aj = JSON.parse(localStorage.getItem(AJ_DEMO)); } catch (e) {}
+      return { preguntas: (dem.length ? dem.map(normalizarPregunta) : preguntasBase()).filter((q) => q.activa), ajustes: { ...ajustesBase(), ...(aj || {}) } };
+    }
+    try {
+      const r = await llamar({ accion: "preguntas" });
+      if (!r.ok) throw new Error(r.error);
+      const out = { preguntas: (r.preguntas ? r.preguntas.map(normalizarPregunta) : preguntasBase()).filter((q) => q.activa), ajustes: { ...ajustesBase(), ...(r.ajustes || {}) } };
+      try { localStorage.setItem(PREG_KEY, JSON.stringify(out)); } catch (e) {}
+      return out;
+    } catch (e) {
+      // Sin conexión: última copia conocida o las preguntas incluidas
+      try { const c = JSON.parse(localStorage.getItem(PREG_KEY)); if (c && c.preguntas) return c; } catch (x) {}
+      return { preguntas: preguntasBase(), ajustes: ajustesBase() };
+    }
+  }
+
+  // Para el panel: todas, incluidas las inactivas
+  async function preguntasAdmin(clave) {
+    if (modoDemo()) {
+      if (clave !== C.CLAVE_DEMO) return { ok: false, error: "Clave incorrecta" };
+      const dem = leerLS(PREG_DEMO);
+      let aj; try { aj = JSON.parse(localStorage.getItem(AJ_DEMO)); } catch (e) {}
+      return { ok: true, preguntas: dem.length ? dem.map(normalizarPregunta) : preguntasBase(), ajustes: { ...ajustesBase(), ...(aj || {}) }, base: !dem.length };
+    }
+    const r = await llamar({ accion: "preguntasAdmin", clave });
+    if (!r.ok) return r;
+    return { ok: true, preguntas: r.preguntas ? r.preguntas.map(normalizarPregunta) : preguntasBase(), ajustes: { ...ajustesBase(), ...(r.ajustes || {}) }, base: !r.preguntas };
+  }
+
+  async function guardarPreguntas(clave, preguntas, ajustes) {
+    if (modoDemo()) {
+      if (clave !== C.CLAVE_DEMO) return { ok: false, error: "Clave incorrecta" };
+      escribirLS(PREG_DEMO, preguntas);
+      try { localStorage.setItem(AJ_DEMO, JSON.stringify(ajustes)); } catch (e) {}
+      return { ok: true, guardadas: preguntas.length };
+    }
+    return llamar({ accion: "guardarPreguntas", clave, preguntas, ajustes });
+  }
+
+  // Quita tildes y mayúsculas para comparar palabras clave
+  const plano = (t) => String(t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+  function esCorrecta(q, v) {
+    if (q.tipo === "abierta") {
+      if (!q.claves.length) return false;
+      const txt = plano(v);
+      return q.claves.filter((k) => txt.includes(plano(k))).length >= Math.min(q.minClaves, q.claves.length);
+    }
+    if (q.tipo === "multiple") return JSON.stringify([...(v || [])].sort((a, b) => a - b)) === JSON.stringify([...q.correcta].sort((a, b) => a - b));
+    return v === q.correcta;
+  }
+
   function codigoCertificado() {
     const a = new Date().getFullYear();
     const r = Math.random().toString(36).slice(2, 8).toUpperCase();
@@ -174,5 +255,5 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   }
 
-  window.PS = { icono, esc, fechaLarga, fechaCorta, guardarRegistro, reenviarPendientes, listarRegistros, eliminarRegistros, codigoCertificado, certificadoHTML, aCSV, descargar, modoDemo };
+  window.PS = { icono, esc, fechaLarga, fechaCorta, guardarRegistro, reenviarPendientes, listarRegistros, eliminarRegistros, cargarPreguntas, preguntasAdmin, guardarPreguntas, normalizarPregunta, esCorrecta, codigoCertificado, certificadoHTML, aCSV, descargar, modoDemo };
 })();
