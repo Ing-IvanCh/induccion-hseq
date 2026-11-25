@@ -97,7 +97,7 @@
 
   const comps = {
     clientes: () => `<div class="clientes">${D.clientes.map((c) => `
-      <div class="cliente"><img src="img/clientes/${esc(c.logo)}.png" alt="${esc(c.n)}" data-logo hidden>
+      <div class="cliente${c.fondo ? " fondo-" + esc(c.fondo) : ""}"><img src="img/clientes/${esc(c.logo)}.png" alt="${esc(c.n)}" data-logo hidden>
       <b>${esc(c.n)}</b><small>${esc(c.s)}</small></div>`).join("")}</div>`,
     acreditaciones: () => `<div class="acred">${D.acreditaciones.map((a) => `
       <div class="sello"><span class="sello-ico">${icono("escudo")}</span><div><b>${esc(a.t)}</b><span>${esc(a.s)}</span><small>${esc(a.d)}</small></div></div>`).join("")}</div>`,

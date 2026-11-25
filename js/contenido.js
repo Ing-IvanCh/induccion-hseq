@@ -269,6 +269,7 @@ window.PS_CONTENIDO = [
    Logos de clientes: guarde cada logo como PNG en img/clientes/
    con el nombre indicado en "logo" (ej. img/clientes/ecopetrol.png).
    Si el archivo no existe, se muestra el nombre del cliente.
+   fondo: "oscuro" (logos blancos) o "gris" para que el logo se vea con sus colores originales.
    ============================================================ */
 window.PS_DATOS = {
   clientes: [
