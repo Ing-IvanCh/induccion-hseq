@@ -102,10 +102,10 @@ button{font:inherit}
 
 /* ---------- Componentes gráficos ---------- */
 .clientes{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
-.cliente{display:grid;place-items:center;align-content:center;text-align:center;gap:2px;min-height:96px;padding:12px;border:1px solid var(--linea);border-radius:14px;background:#FFFFFF;color:#14387F}
+.cliente{display:grid;place-items:center;align-content:center;text-align:center;gap:2px;min-height:118px;padding:12px;border:1px solid var(--linea);border-radius:14px;background:#FFFFFF;color:#14387F}
 .cliente b{font-size:18px;font-weight:800;line-height:1.2}
 .cliente small{font-size:13px;color:#4A5B75}
-.cliente img{max-height:48px;max-width:100%;object-fit:contain}
+.cliente img{height:60px;width:100%;object-fit:contain;margin-bottom:6px}
 .cliente.con-logo b{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 
 .acred{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}

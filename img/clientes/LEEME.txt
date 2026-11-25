@@ -1,4 +1,2 @@
-Guarde aqui los logos de los clientes en PNG (fondo transparente o blanco).
-Nombres esperados: ecopetrol.png, cenit.png, odl.png, hocol.png, geopark.png,
-frontera.png, canacol.png, esenttia.png, yara.png, epm.png
-Si un archivo no existe, la plataforma muestra el nombre del cliente.
+Logos de los clientes (PNG). Para cambiar uno, reemplace el archivo con el mismo nombre.
+Para agregar o quitar clientes, edite PS_DATOS.clientes al final de js/contenido.js.
