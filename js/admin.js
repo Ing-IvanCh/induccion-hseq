@@ -29,6 +29,8 @@
           <label>Clave<input type="password" name="clave" required autocomplete="current-password" autofocus></label>
           <p class="error" role="alert">${esc(msg)}</p>
           <button class="btn primario ancho" type="submit">Ingresar</button>
+          <div class="login-sep"><span>¿No es administrador?</span></div>
+          <a class="btn ancho" href="induccion.html">${icono("casco")} Hacer la inducción</a>
         </form>
       </section>`;
     document.getElementById("fLogin").addEventListener("submit", (e) => {
@@ -90,8 +92,8 @@
       editor.pintar(document.getElementById("zonaEditor"));
       return;
     }
-    const base = location.href.split(/[?#]/)[0].replace(/admin\.html$/, "");
-    const enlaceInd = base, enlaceRe = base + "?tipo=reinduccion";
+    const base = C.URL_BASE || location.href.split(/[?#]/)[0].replace(/[^/]*$/, "");
+    const enlaceInd = base + "induccion.html", enlaceRe = base + "induccion.html?tipo=reinduccion";
     const procesos = [...new Set([...C.PROCESOS, ...registros.map((r) => r.proceso).filter(Boolean)])];
     panel.innerHTML = cabecera() + `
       <section class="enlaces">

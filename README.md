@@ -4,15 +4,15 @@ Página web para que cada trabajador haga su **inducción o reinducción HSEQ** 
 
 | Página | Para quién | Qué hace |
 |---|---|---|
-| `index.html` | Trabajador | Registro → 40 pantallas de contenido → evaluación → certificado |
-| `index.html?tipo=reinduccion` | Trabajador | Lo mismo, registrado como **Reinducción** |
-| `admin.html` | Área HSEQ | Ingreso con clave, indicadores, filtros, respuestas, certificados y exportación a Excel |
+| `index.html` (página principal) | Área HSEQ | Panel: ingreso con clave, resultados, editor de preguntas, certificados y exportación. Tiene el botón «Ir a la inducción» para quien no es administrador |
+| `induccion.html` | Trabajador | Registro → 40 pantallas de contenido → evaluación → certificado |
+| `induccion.html?tipo=reinduccion` | Trabajador | Lo mismo, registrado como **Reinducción** |
 
 **Cómo funciona:** GitHub Pages publica la página gratis. GitHub no guarda datos, así que cada evaluación se envía a una **hoja de Google Sheets** a través de Google Apps Script, también gratis. Ahí quedan los registros como evidencia del SG-SST.
 
 ```
-Trabajador ──(enlace)──► GitHub Pages (index.html) ──► Apps Script ──► Google Sheets "Registros"
-Área HSEQ ──(clave)───► GitHub Pages (admin.html) ◄── Apps Script ◄──┘
+Trabajador ──(enlace)──► GitHub Pages (induccion.html) ──► Apps Script ──► Google Sheets "Registros"
+Área HSEQ ──(clave)───► GitHub Pages (index.html) ◄── Apps Script ◄──┘
 ```
 
 ---
@@ -46,7 +46,7 @@ Mientras `API_URL` esté vacía, la plataforma funciona en **modo demostración*
 ## Paso 3 · Subir a GitHub y publicar (10 min)
 
 1. Entre a [github.com](https://github.com) y cree un repositorio nuevo (**New repository**), por ejemplo `induccion-hseq`. Debe ser **Public**, porque GitHub Pages gratis exige repositorios públicos. Los datos de los trabajadores no quedan en GitHub, quedan en su Google Sheets.
-2. En el repositorio, haga clic en **Add file → Upload files** y arrastre **todo el contenido** de esta carpeta: `index.html`, `admin.html`, las carpetas `css`, `js`, `img` y `apps-script`, y este `README.md`. Luego haga clic en **Commit changes**.
+2. En el repositorio, haga clic en **Add file → Upload files** y arrastre **todo el contenido** de esta carpeta: `index.html`, `induccion.html`, `admin.html`, las carpetas `css`, `js`, `img` y `apps-script`, y este `README.md`. Luego haga clic en **Commit changes**.
    - Arrastre el *contenido* de la carpeta, no la carpeta misma: `index.html` debe quedar en la raíz del repositorio.
 3. Vaya a **Settings → Pages**. En *Build and deployment → Branch* elija **main** y **/(root)** y haga clic en **Save**.
 4. Espere 1 o 2 minutos y recargue. Aparecerá su dirección:
@@ -54,9 +54,9 @@ Mientras `API_URL` esté vacía, la plataforma funciona en **modo demostración*
 
 ## Paso 4 · Probar y enviar los enlaces
 
-1. Abra `https://SU-USUARIO.github.io/induccion-hseq/admin.html`, entre con su clave y copie los dos enlaces que aparecen arriba:
-   - **Inducción:** `https://SU-USUARIO.github.io/induccion-hseq/`
-   - **Reinducción:** `https://SU-USUARIO.github.io/induccion-hseq/?tipo=reinduccion`
+1. Abra `https://SU-USUARIO.github.io/induccion-hseq/`, entre con su clave y copie los dos enlaces que aparecen arriba:
+   - **Inducción:** `https://SU-USUARIO.github.io/induccion-hseq/induccion.html`
+   - **Reinducción:** `https://SU-USUARIO.github.io/induccion-hseq/induccion.html?tipo=reinduccion`
 2. Haga una inducción de prueba completa y revise que aparezca la fila en Google Sheets y en el panel. Después puede borrar esa fila de la hoja.
 3. Envíe los enlaces por WhatsApp o correo. Guarde el enlace del panel solo para el área HSEQ.
 
@@ -66,8 +66,9 @@ Mientras `API_URL` esté vacía, la plataforma funciona en **modo demostración*
 
 Hay dos formas:
 
-- **Enlace directo:** `https://SU-USUARIO.github.io/induccion-hseq/admin.html`. Guárdelo en favoritos.
+- **Enlace directo:** `https://SU-USUARIO.github.io/induccion-hseq/`. Guárdelo en favoritos.
 - **Desde la inducción:** abajo a la derecha de cualquier pantalla está el enlace **«Acceso administrador»**.
+- El panel es la página principal; quien no tenga la clave usa el botón **«Ir a la inducción»** (arriba a la derecha o debajo del ingreso).
 
 La **clave** es la que escribió en `CLAVE_ADMIN` dentro de `apps-script/Codigo.gs` (Paso 1, punto 4). Mientras la plataforma esté en modo demostración, la clave es `demo`.
 

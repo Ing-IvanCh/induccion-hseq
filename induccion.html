@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inducción HSEQ · Process Solutions</title>
+<link rel="icon" href="img/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+  <header class="barra">
+    <img src="img/logo.png" alt="Process Solutions" class="logo">
+    <div class="barra-txt"><b>Inducción HSEQ</b><span id="barraTipo">Inducción</span></div>
+    <span class="barra-paso" id="barraPaso"></span>
+  </header>
+  <div class="progreso" aria-hidden="true"><span id="progreso"></span></div>
+
+  <div class="layout">
+    <aside class="lateral" id="lateral" aria-label="Avance de la inducción"></aside>
+    <div class="principal">
+      <div id="avisoDemo" class="aviso-demo" hidden>Modo demostración: los registros se guardan solo en este navegador. Para guardarlos en Google Sheets, siga el paso 2 del README.</div>
+      <main id="app" tabindex="-1"></main>
+    </div>
+  </div>
+
+  <footer class="pie">
+    <span>Área HSEQ · Process Solutions S.A.S.</span>
+    <a href="./" class="pie-admin">Acceso administrador</a>
+  </footer>
+
+  <script src="js/config.js"></script>
+  <script src="js/contenido.js"></script>
+  <script src="js/evaluacion.js"></script>
+  <script src="js/comun.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

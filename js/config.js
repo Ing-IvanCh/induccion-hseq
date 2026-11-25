@@ -8,6 +8,9 @@ window.PS_CONFIG = {
   // los registros se guardan solo en el navegador de quien la usa.
   API_URL: "https://script.google.com/macros/s/AKfycbzIHe9ZGGdT-g-LxVHClAR42kDTP7sKWbJ3ekvZ-OYkjPlYrd8X3uyz6wbRFd4IcLYJrQ/exec",
 
+  // Dirección pública de la plataforma (para los enlaces que copia el panel)
+  URL_BASE: "https://ing-ivanch.github.io/induccion-hseq/",
+
   EMPRESA: "Process Solutions S.A.S.",
   NOTA_MINIMA: 80,            // porcentaje mínimo para aprobar
   CODIGO_CERTIFICADO: "PS-HSEQ",

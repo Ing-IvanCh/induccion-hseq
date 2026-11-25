@@ -208,6 +208,10 @@ textarea{resize:vertical}
 .cert-sello b{font-size:22px;line-height:1}.cert-sello small{font-size:12px;font-weight:800}
 
 /* ---------- Panel de administración ---------- */
+.btn.ir-induccion{background:#00A8E0;border-color:#00A8E0;color:#10223F}
+.btn.ir-induccion:hover{background:#5FD0F3}
+.login-sep{display:flex;align-items:center;gap:10px;color:var(--ink2);font-size:14px;font-weight:700;margin-top:6px}
+.login-sep::before,.login-sep::after{content:"";flex:1;height:1px;background:var(--linea)}
 .pestanas{display:flex;gap:6px;margin:0 0 16px;border-bottom:2px solid var(--linea)}
 .pestanas button{display:inline-flex;align-items:center;gap:8px;min-height:46px;padding:0 18px;border:0;background:none;color:var(--ink2);font-weight:800;font-size:16px;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px}
 .pestanas button[aria-selected=true]{color:var(--acento);border-bottom-color:var(--cian)}
@@ -316,7 +320,7 @@ textarea{resize:vertical}
   .grid2,.enlaces{grid-template-columns:minmax(0,1fr)}
 }
 @media (max-width:640px){
-  .admin .barra a.btn,.admin .barra-txt span{display:none}
+  .admin .barra-txt{visibility:hidden}.admin .barra .btn.chico{padding:0 10px;font-size:14px}
   .ed-cab select{flex:1}.ed-act{margin-right:0}.ed-herr{width:100%;justify-content:flex-end}
   body{font-size:16px}
   .cols,.fila2,.acred,.residuos,.phva{grid-template-columns:minmax(0,1fr)}
